@@ -3,6 +3,13 @@ package com.example.auth_server.entity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+/**
+ * Entité représentant un utilisateur en base de données.
+ *
+ * ATTENTION : Cette implémentation est volontairement dangereuse
+ * et ne doit jamais être utilisée en production.
+ * TP2 améliore le stockage mais ne protège pas encore contre le rejeu.
+ */
 @Entity
 @Table(name = "users")
 public class User {
@@ -14,43 +21,47 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-    // TP1 Volontairement dangereux : mot de passe en clair
-    private String passwordClear;
+    @Column(name = "password_hash", nullable = false)
+    private String passwordHash;
 
-    private LocalDateTime createdAt;
+    @Column(name = "failed_attempts")
+    private int failedAttempts = 0;
+
+    @Column(name = "lock_until")
+    private LocalDateTime lockUntil;
 
     @Column(name = "token")
     private String token;
 
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
     public User() {}
 
-    public User(String email, String passwordClear) {
+    public User(String email, String passwordHash) {
         this.email = email;
-        this.passwordClear = passwordClear;
+        this.passwordHash = passwordHash;
         this.createdAt = LocalDateTime.now();
     }
 
     // Getters & Setters
-    public String getPasswordClear() {
-        return passwordClear;
-    }
+    public Long getId() { return id; }
 
-    public void setPasswordClear(String passwordClear) {
-        this.passwordClear = passwordClear;
-    }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 
-    public Long getId() {
-        return id;
-    }
+    public String getPasswordHash() { return passwordHash; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
 
-    public String getEmail() {
-        return email;
-    }
+    public int getFailedAttempts() { return failedAttempts; }
+    public void setFailedAttempts(int failedAttempts) { this.failedAttempts = failedAttempts; }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
+    public LocalDateTime getLockUntil() { return lockUntil; }
+    public void setLockUntil(LocalDateTime lockUntil) { this.lockUntil = lockUntil; }
 
     public String getToken() { return token; }
     public void setToken(String token) { this.token = token; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }
