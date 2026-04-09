@@ -7,6 +7,8 @@ import com.example.auth_server.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import java.util.UUID;
+import com.example.auth_server.exception.AuthenticationFailedException;
 
 
 @Service
@@ -53,17 +55,24 @@ public class AuthService {
         logger.info("Inscription réussie pour : {}", email);
         return user;
     }
-    public boolean login(String email, String password) {
-        boolean success = userRepository.findByEmail(email)
-                .map(user -> user.getPasswordClear().equals(password))
-                .orElse(false);
+    public String login(String email, String password) {
+        User user = userRepository.findByEmail(email)
+                .orElse(null);
 
-        if (success) {
-            logger.info("Connexion réussie pour : {}", email);
-        } else {
+        if (user == null || !user.getPasswordClear().equals(password)) {
             logger.warn("Connexion échouée pour : {}", email);
+            throw new AuthenticationFailedException("Email ou mot de passe incorrect");
         }
 
-        return success;
+        String token = UUID.randomUUID().toString();
+        user.setToken(token);
+        userRepository.save(user);
+        logger.info("Connexion réussie pour : {}", email);
+        return token;
+    }
+
+    public User getUserByToken(String token) {
+        return userRepository.findByToken(token)
+                .orElseThrow(() -> new AuthenticationFailedException("Token invalide"));
     }
 }

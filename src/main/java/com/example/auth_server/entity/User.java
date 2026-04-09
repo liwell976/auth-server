@@ -19,6 +19,9 @@ public class User {
 
     private LocalDateTime createdAt;
 
+    @Column(name = "token")
+    private String token;
+
     public User() {}
 
     public User(String email, String passwordClear) {
@@ -47,4 +50,7 @@ public class User {
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
+
+    public String getToken() { return token; }
+    public void setToken(String token) { this.token = token; }
 }
