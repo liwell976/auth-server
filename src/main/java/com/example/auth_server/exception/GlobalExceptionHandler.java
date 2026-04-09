@@ -21,7 +21,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthenticationFailedException.class)
     public ResponseEntity<Map<String, Object>> handleAuthFailed(
             AuthenticationFailedException ex, HttpServletRequest request) {
-        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), request.getRequestURI());
+        HttpStatus status = ex.getMessage().contains("bloqué")
+                ? HttpStatus.LOCKED
+                : HttpStatus.UNAUTHORIZED;
+        return buildResponse(status, ex.getMessage(), request.getRequestURI());
     }
 
     @ExceptionHandler(ResourceConflictException.class)
