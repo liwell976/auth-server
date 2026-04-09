@@ -28,4 +28,23 @@ public class User {
     }
 
     // Getters & Setters
+    public String getPasswordClear() {
+        return passwordClear;
+    }
+
+    public void setPasswordClear(String passwordClear) {
+        this.passwordClear = passwordClear;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
 }

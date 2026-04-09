@@ -53,4 +53,17 @@ public class AuthService {
         logger.info("Inscription réussie pour : {}", email);
         return user;
     }
+    public boolean login(String email, String password) {
+        boolean success = userRepository.findByEmail(email)
+                .map(user -> user.getPasswordClear().equals(password))
+                .orElse(false);
+
+        if (success) {
+            logger.info("Connexion réussie pour : {}", email);
+        } else {
+            logger.warn("Connexion échouée pour : {}", email);
+        }
+
+        return success;
+    }
 }

@@ -20,4 +20,14 @@ public class AuthController {
         return "User registered";
     }
 
+    @PostMapping("/login")
+    public String login(@RequestParam String email,
+                        @RequestParam String password) {
+        boolean success = authService.login(email, password);
+        if (!success) {
+            return "Login failed";
+        }
+        return "Login success";
+    }
+
 }
