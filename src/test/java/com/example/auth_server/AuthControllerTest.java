@@ -1,11 +1,16 @@
 package com.example.auth_server;
 
+import com.example.auth_server.service.HmacUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -49,30 +54,46 @@ class AuthControllerTest {
                 .andExpect(status().isConflict());
     }
 
-    // Test controller — Login OK
+    // Test controller — Login OK avec HMAC
     @Test
     void testLoginOK() throws Exception {
         mockMvc.perform(post("/api/auth/register")
                 .param("email", "login@example.com")
                 .param("password", "Password123!"));
 
+        String nonce = UUID.randomUUID().toString();
+        long timestamp = Instant.now().getEpochSecond();
+        String message = "login@example.com:" + nonce + ":" + timestamp;
+        String hmac = HmacUtil.compute("Password123!", message);
+
+        String body = String.format(
+                "{\"email\":\"login@example.com\",\"nonce\":\"%s\",\"timestamp\":%d,\"hmac\":\"%s\"}",
+                nonce, timestamp, hmac);
+
         mockMvc.perform(post("/api/auth/login")
-                        .param("email", "login@example.com")
-                        .param("password", "Password123!"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").exists());
+                .andExpect(jsonPath("$.accessToken").exists());
     }
 
-    // Test controller — Login KO
+    // Test controller — Login KO avec HMAC invalide
     @Test
     void testLoginKO() throws Exception {
         mockMvc.perform(post("/api/auth/register")
                 .param("email", "loginfail@example.com")
                 .param("password", "Password123!"));
 
+        String nonce = UUID.randomUUID().toString();
+        long timestamp = Instant.now().getEpochSecond();
+
+        String body = String.format(
+                "{\"email\":\"loginfail@example.com\",\"nonce\":\"%s\",\"timestamp\":%d,\"hmac\":\"hmac_invalide\"}",
+                nonce, timestamp);
+
         mockMvc.perform(post("/api/auth/login")
-                        .param("email", "loginfail@example.com")
-                        .param("password", "Mauvais123!"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -90,15 +111,24 @@ class AuthControllerTest {
                 .param("email", "me@example.com")
                 .param("password", "Password123!"));
 
+        String nonce = UUID.randomUUID().toString();
+        long timestamp = Instant.now().getEpochSecond();
+        String message = "me@example.com:" + nonce + ":" + timestamp;
+        String hmac = HmacUtil.compute("Password123!", message);
+
+        String body = String.format(
+                "{\"email\":\"me@example.com\",\"nonce\":\"%s\",\"timestamp\":%d,\"hmac\":\"%s\"}",
+                nonce, timestamp, hmac);
+
         String response = mockMvc.perform(post("/api/auth/login")
-                        .param("email", "me@example.com")
-                        .param("password", "Password123!"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
-        String token = response.split("\"token\":\"")[1].split("\"")[0];
+        String token = response.split("\"accessToken\":\"")[1].split("\"")[0];
 
         mockMvc.perform(get("/api/auth/me")
                         .header("Authorization", "Bearer " + token))

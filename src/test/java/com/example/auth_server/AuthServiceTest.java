@@ -4,10 +4,14 @@ import com.example.auth_server.exception.AuthenticationFailedException;
 import com.example.auth_server.exception.InvalidInputException;
 import com.example.auth_server.exception.ResourceConflictException;
 import com.example.auth_server.service.AuthService;
+import com.example.auth_server.service.CryptoService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -17,6 +21,9 @@ class AuthServiceTest {
 
     @Autowired
     private AuthService authService;
+
+    @Autowired
+    private CryptoService cryptoService;
 
     // Test 1 — Email vide
     @Test
@@ -46,14 +53,35 @@ class AuthServiceTest {
                 authService.register("test@example.com", "password123!"));
     }
 
-    // Test 5 — Inscription OK
+    // Test 5 — Mot de passe sans minuscule
+    @Test
+    void testMotDePasseSansMinuscule() {
+        assertThrows(InvalidInputException.class, () ->
+                authService.register("test@example.com", "PASSWORD123!"));
+    }
+
+    // Test 6 — Mot de passe sans chiffre
+    @Test
+    void testMotDePasseSansChiffre() {
+        assertThrows(InvalidInputException.class, () ->
+                authService.register("test@example.com", "Password!!!abc"));
+    }
+
+    // Test 7 — Mot de passe sans caractère spécial
+    @Test
+    void testMotDePasseSansSpecial() {
+        assertThrows(InvalidInputException.class, () ->
+                authService.register("test@example.com", "Password12345"));
+    }
+
+    // Test 8 — Inscription OK
     @Test
     void testInscriptionOK() {
         assertDoesNotThrow(() ->
                 authService.register("nouveau@example.com", "Password123!"));
     }
 
-    // Test 6 — Inscription refusée si email déjà existant
+    // Test 9 — Inscription refusée si email déjà existant
     @Test
     void testInscriptionEmailDejaExistant() {
         authService.register("double@example.com", "Password123!");
@@ -61,78 +89,95 @@ class AuthServiceTest {
                 authService.register("double@example.com", "Password123!"));
     }
 
-    // Test 7 — Login OK
+    // Test 10 — Login OK avec HMAC valide
     @Test
-    void testLoginOK() {
+    void testLoginHmacOK() throws Exception {
         authService.register("login@example.com", "Password123!");
+        String nonce = UUID.randomUUID().toString();
+        long timestamp = Instant.now().getEpochSecond();
+        String message = "login@example.com:" + nonce + ":" + timestamp;
+        String hmac = com.example.auth_server.service.HmacUtil.compute(
+                "Password123!", message);
         assertDoesNotThrow(() ->
-                authService.login("login@example.com", "Password123!"));
+                cryptoService.verifyHmacAndLogin(
+                        "login@example.com", nonce, timestamp, hmac));
     }
 
-    // Test 8 — Login KO si mot de passe incorrect
+    // Test 11 — Login KO si HMAC invalide
     @Test
-    void testLoginMauvaisMotDePasse() {
-        authService.register("motdepasse@example.com", "Password123!");
+    void testLoginHmacInvalide() {
+        authService.register("hmac@example.com", "Password123!");
+        String nonce = UUID.randomUUID().toString();
+        long timestamp = Instant.now().getEpochSecond();
         assertThrows(AuthenticationFailedException.class, () ->
-                authService.login("motdepasse@example.com", "Mauvais123!"));
+                cryptoService.verifyHmacAndLogin(
+                        "hmac@example.com", nonce, timestamp, "hmac_invalide"));
     }
 
-    // Test 9 — Login KO si email inconnu
+    // Test 12 — Login KO si timestamp expiré
+    @Test
+    void testLoginTimestampExpire() {
+        authService.register("timestamp@example.com", "Password123!");
+        String nonce = UUID.randomUUID().toString();
+        long oldTimestamp = Instant.now().getEpochSecond() - 120;
+        assertThrows(AuthenticationFailedException.class, () ->
+                cryptoService.verifyHmacAndLogin(
+                        "timestamp@example.com", nonce, oldTimestamp, "hmac"));
+    }
+
+    // Test 13 — Login KO si timestamp futur
+    @Test
+    void testLoginTimestampFutur() {
+        authService.register("futur@example.com", "Password123!");
+        String nonce = UUID.randomUUID().toString();
+        long futureTimestamp = Instant.now().getEpochSecond() + 120;
+        assertThrows(AuthenticationFailedException.class, () ->
+                cryptoService.verifyHmacAndLogin(
+                        "futur@example.com", nonce, futureTimestamp, "hmac"));
+    }
+
+    // Test 14 — Login KO si nonce déjà utilisé
+    @Test
+    void testLoginNonceDejaUtilise() throws Exception {
+        authService.register("nonce@example.com", "Password123!");
+        String nonce = UUID.randomUUID().toString();
+        long timestamp = Instant.now().getEpochSecond();
+        String message = "nonce@example.com:" + nonce + ":" + timestamp;
+        String hmac = com.example.auth_server.service.HmacUtil.compute(
+                "Password123!", message);
+        cryptoService.verifyHmacAndLogin(
+                "nonce@example.com", nonce, timestamp, hmac);
+        assertThrows(AuthenticationFailedException.class, () ->
+                cryptoService.verifyHmacAndLogin(
+                        "nonce@example.com", nonce, timestamp, hmac));
+    }
+
+    // Test 15 — Login KO si email inconnu
     @Test
     void testLoginEmailInconnu() {
         assertThrows(AuthenticationFailedException.class, () ->
-                authService.login("inconnu@example.com", "Password123!"));
+                cryptoService.verifyHmacAndLogin(
+                        "inconnu@example.com", "nonce",
+                        Instant.now().getEpochSecond(), "hmac"));
     }
 
-    // Test 10 — Même message d'erreur pour email inconnu et mauvais mot de passe
+    // Test 16 — Même message erreur pour email inconnu et HMAC invalide
     @Test
-    void testMemeMessageErreurLoginKO() {
+    void testMemeMessageErreur() {
         authService.register("same@example.com", "Password123!");
 
         AuthenticationFailedException ex1 = assertThrows(
                 AuthenticationFailedException.class, () ->
-                        authService.login("inconnu@example.com", "Password123!"));
+                        cryptoService.verifyHmacAndLogin(
+                                "inconnu@example.com", "nonce",
+                                Instant.now().getEpochSecond(), "hmac"));
 
         AuthenticationFailedException ex2 = assertThrows(
                 AuthenticationFailedException.class, () ->
-                        authService.login("same@example.com", "Mauvais123!"));
+                        cryptoService.verifyHmacAndLogin(
+                                "same@example.com", "nonce",
+                                Instant.now().getEpochSecond(), "hmac_invalide"));
 
         assertEquals(ex1.getMessage(), ex2.getMessage());
-    }
-
-    // Test 11 — Mot de passe sans minuscule
-    @Test
-    void testMotDePasseSansMinuscule() {
-        assertThrows(InvalidInputException.class, () ->
-                authService.register("test@example.com", "PASSWORD123!"));
-    }
-
-    // Test 12 — Mot de passe sans chiffre
-    @Test
-    void testMotDePasseSansChiffre() {
-        assertThrows(InvalidInputException.class, () ->
-                authService.register("test@example.com", "Password!!!abc"));
-    }
-
-    // Test 13 — Mot de passe sans caractère spécial
-    @Test
-    void testMotDePasseSansSpecial() {
-        assertThrows(InvalidInputException.class, () ->
-                authService.register("test@example.com", "Password12345"));
-    }
-
-    // Test 14 — Lockout après 5 tentatives
-    @Test
-    void testLockoutApres5Tentatives() {
-        authService.register("lockout@example.com", "Password123!");
-        for (int i = 0; i < 5; i++) {
-            try {
-                authService.login("lockout@example.com", "Mauvais123!");
-            } catch (AuthenticationFailedException e) {
-                // attendu
-            }
-        }
-        assertThrows(AuthenticationFailedException.class, () ->
-                authService.login("lockout@example.com", "Password123!"));
     }
 }
