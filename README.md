@@ -65,6 +65,30 @@ sans aucune limite de temps.
 - SonarCloud obligatoire
 - 10 tests JUnit minimum, 60% de couverture
 
+## Qualité — TP2
+
+### SonarCloud
+- Quality Gate : Passed
+- Couverture : 92%
+- Duplications : 0.0%
+- Vulnérabilités corrigées : logs utilisateur, regex DoS
+
+### Comment SonarCloud est configuré
+SonarCloud est configuré via le pom.xml avec les propriétés sonar.organization,
+sonar.projectKey et sonar.host.url. L'analyse se lance avec :
+```powershell
+.\mvnw verify sonar:sonar -Dsonar.token=ffd7ef2cfc4828e27315f1446b52d1a6de79ef14
+```
+
+### Faiblesse de l'authentification TP2
+Même avec BCrypt, le mot de passe est encore transmis directement
+dans la requête de login. Si un attaquant capture la requête, il peut
+tenter de la rejouer. TP3 corrigera cela avec HMAC et un nonce.
+
+### Plan d'améliorations futures
+- TP3 : Protocole HMAC + nonce anti-rejeu
+- TP4 : Master Key AES-GCM + CI/CD GitHub Actions
+
 ## TPs
 - TP1 : Authentification dangereuse (mot de passe en clair) — tag v1-tp1
 - TP2 : Authentification fragile (BCrypt + anti brute force) — tag v2-tp2
