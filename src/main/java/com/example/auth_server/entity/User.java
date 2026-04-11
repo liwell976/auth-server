@@ -21,8 +21,8 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
-    private String passwordHash;
+    @Column(name = "password_encrypted", nullable = false)
+    private String passwordEncrypted;
 
     @Column(name = "failed_attempts")
     private int failedAttempts = 0;
@@ -38,9 +38,9 @@ public class User {
 
     public User() {}
 
-    public User(String email, String passwordHash) {
+    public User(String email, String passwordEncrypted) {
         this.email = email;
-        this.passwordHash = passwordHash;
+        this.passwordEncrypted = passwordEncrypted;
         this.createdAt = LocalDateTime.now();
     }
 
@@ -50,9 +50,10 @@ public class User {
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
-    public String getPasswordHash() { return passwordHash; }
-    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
-
+    public String getPasswordEncrypted() { return passwordEncrypted; }
+    public void setPasswordEncrypted(String passwordEncrypted) {
+        this.passwordEncrypted = passwordEncrypted;
+    }
     public int getFailedAttempts() { return failedAttempts; }
     public void setFailedAttempts(int failedAttempts) { this.failedAttempts = failedAttempts; }
 
