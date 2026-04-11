@@ -49,14 +49,14 @@ public class AuthService {
         PasswordPolicyValidator.validate(password);
 
         if (userRepository.findByEmail(email).isPresent()) {
-            logger.warn("Inscription échouée : email déjà existant - {}", email);
+            logger.warn("Inscription échouée : email déjà existant");
             throw new ResourceConflictException("Cet email est déjà utilisé");
         }
 
         String hashedPassword = passwordEncoder.encode(password);
         User user = new User(email, hashedPassword);
         userRepository.save(user);
-        logger.info("Inscription réussie pour : {}", email);
+        logger.info("Inscription réussie");
         return user;
     }
 
@@ -73,7 +73,7 @@ public class AuthService {
         // Vérification du blocage
         if (user.getLockUntil() != null &&
                 user.getLockUntil().isAfter(LocalDateTime.now())) {
-            logger.warn("Compte bloqué pour : {}", email);
+            logger.warn("Compte bloqué");
             throw new AuthenticationFailedException(
                     "Compte temporairement bloqué. Réessayez dans 2 minutes.");
         }
@@ -84,11 +84,10 @@ public class AuthService {
             if (user.getFailedAttempts() >= MAX_ATTEMPTS) {
                 user.setLockUntil(LocalDateTime.now()
                         .plusMinutes(LOCK_DURATION_MINUTES));
-                logger.warn("Compte bloqué après {} tentatives pour : {}",
-                        MAX_ATTEMPTS, email);
+                logger.warn("Compte bloqué après {} tentatives", MAX_ATTEMPTS);
             }
             userRepository.save(user);
-            logger.warn("Connexion échouée pour : {}", email);
+            logger.warn("Connexion échouée");
             throw new AuthenticationFailedException(
                     "Email ou mot de passe incorrect");
         }
@@ -99,7 +98,7 @@ public class AuthService {
         String token = UUID.randomUUID().toString();
         user.setToken(token);
         userRepository.save(user);
-        logger.info("Connexion réussie pour : {}", email);
+        logger.info("Connexion réussie");
         return token;
     }
 
