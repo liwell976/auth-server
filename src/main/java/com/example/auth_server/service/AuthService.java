@@ -9,11 +9,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 
 /**
  * Service principal d'authentification.
- *
  * ATTENTION : Cette implémentation est volontairement dangereuse
  * et ne doit jamais être utilisée en production.
  * TP3 améliore le protocole avec HMAC mais le mot de passe
@@ -23,9 +21,6 @@ import java.time.LocalDateTime;
 public class AuthService {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
-    private static final int MAX_ATTEMPTS = 5;
-    private static final int LOCK_DURATION_MINUTES = 2;
-
     private final UserRepository userRepository;
 
     public AuthService(UserRepository userRepository) {
@@ -35,9 +30,6 @@ public class AuthService {
     /**
      * Inscrit un nouvel utilisateur.
      * Le mot de passe est stocké en clair pour permettre le recalcul HMAC.
-     *
-     * ATTENTION : Cette implémentation est volontairement dangereuse
-     * et ne doit jamais être utilisée en production.
      */
     public User register(String email, String password) {
 

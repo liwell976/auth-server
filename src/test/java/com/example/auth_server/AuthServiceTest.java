@@ -5,6 +5,7 @@ import com.example.auth_server.exception.InvalidInputException;
 import com.example.auth_server.exception.ResourceConflictException;
 import com.example.auth_server.service.AuthService;
 import com.example.auth_server.service.CryptoService;
+import com.example.auth_server.service.HmacUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -96,8 +97,7 @@ class AuthServiceTest {
         String nonce = UUID.randomUUID().toString();
         long timestamp = Instant.now().getEpochSecond();
         String message = "login@example.com:" + nonce + ":" + timestamp;
-        String hmac = com.example.auth_server.service.HmacUtil.compute(
-                "Password123!", message);
+        String hmac = HmacUtil.compute("Password123!", message);
         assertDoesNotThrow(() ->
                 cryptoService.verifyHmacAndLogin(
                         "login@example.com", nonce, timestamp, hmac));
@@ -143,8 +143,7 @@ class AuthServiceTest {
         String nonce = UUID.randomUUID().toString();
         long timestamp = Instant.now().getEpochSecond();
         String message = "nonce@example.com:" + nonce + ":" + timestamp;
-        String hmac = com.example.auth_server.service.HmacUtil.compute(
-                "Password123!", message);
+        String hmac = HmacUtil.compute("Password123!", message);
         cryptoService.verifyHmacAndLogin(
                 "nonce@example.com", nonce, timestamp, hmac);
         assertThrows(AuthenticationFailedException.class, () ->
@@ -155,28 +154,28 @@ class AuthServiceTest {
     // Test 15 — Login KO si email inconnu
     @Test
     void testLoginEmailInconnu() {
+        long timestamp = Instant.now().getEpochSecond();
         assertThrows(AuthenticationFailedException.class, () ->
                 cryptoService.verifyHmacAndLogin(
-                        "inconnu@example.com", "nonce",
-                        Instant.now().getEpochSecond(), "hmac"));
+                        "inconnu@example.com", "nonce", timestamp, "hmac"));
     }
 
     // Test 16 — Même message erreur pour email inconnu et HMAC invalide
     @Test
     void testMemeMessageErreur() {
         authService.register("same@example.com", "Password123!");
+        long ts1 = Instant.now().getEpochSecond();
+        long ts2 = Instant.now().getEpochSecond();
 
         AuthenticationFailedException ex1 = assertThrows(
                 AuthenticationFailedException.class, () ->
                         cryptoService.verifyHmacAndLogin(
-                                "inconnu@example.com", "nonce",
-                                Instant.now().getEpochSecond(), "hmac"));
+                                "inconnu@example.com", "nonce", ts1, "hmac"));
 
         AuthenticationFailedException ex2 = assertThrows(
                 AuthenticationFailedException.class, () ->
                         cryptoService.verifyHmacAndLogin(
-                                "same@example.com", "nonce",
-                                Instant.now().getEpochSecond(), "hmac_invalide"));
+                                "same@example.com", "nonce2", ts2, "hmac_invalide"));
 
         assertEquals(ex1.getMessage(), ex2.getMessage());
     }

@@ -8,16 +8,14 @@ import com.example.auth_server.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
  * Service de vérification du protocole HMAC.
- *
- * ATTENTION : Cette implémentation est volontairement dangereuse
- * et ne doit jamais être utilisée en production.
  * Le mot de passe est stocké de façon réversible pour permettre
  * le recalcul du HMAC côté serveur.
  */
@@ -26,7 +24,6 @@ public class CryptoService {
 
     private static final Logger logger = LoggerFactory.getLogger(CryptoService.class);
     private static final long TIMESTAMP_WINDOW = 60;
-    private static final int TOKEN_EXPIRY_MINUTES = 15;
 
     private final UserRepository userRepository;
     private final AuthNonceRepository authNonceRepository;
@@ -76,7 +73,6 @@ public class CryptoService {
             String expectedHmac = HmacUtil.compute(
                     user.getPasswordEncrypted(), message);
 
-            // 6. Comparer en temps constant
             if (!HmacUtil.compareConstantTime(expectedHmac, hmac)) {
                 logger.warn("Login HMAC échoué : signature invalide");
                 throw new AuthenticationFailedException(
@@ -84,7 +80,7 @@ public class CryptoService {
             }
         } catch (AuthenticationFailedException e) {
             throw e;
-        } catch (Exception e) {
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             throw new AuthenticationFailedException(
                     "Erreur lors de la vérification");
         }

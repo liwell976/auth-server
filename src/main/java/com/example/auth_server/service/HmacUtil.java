@@ -3,6 +3,8 @@ package com.example.auth_server.service;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
 /**
@@ -14,11 +16,9 @@ public class HmacUtil {
 
     /**
      * Calcule un HMAC-SHA256.
-     * @param key clé secrète (mot de passe en clair)
-     * @param data données à signer (email:nonce:timestamp)
-     * @return signature hexadécimale
      */
-    public static String compute(String key, String data) throws Exception {
+    public static String compute(String key, String data)
+            throws NoSuchAlgorithmException, InvalidKeyException {
         Mac mac = Mac.getInstance("HmacSHA256");
         SecretKeySpec secretKey = new SecretKeySpec(
                 key.getBytes(StandardCharsets.UTF_8), "HmacSHA256");

@@ -4,8 +4,6 @@ import com.example.auth_server.exception.InvalidInputException;
 
 /**
  * Validateur de politique de mot de passe.
- *
- * TP2 améliore le stockage mais ne protège pas encore contre le rejeu.
  */
 public class PasswordPolicyValidator {
 
@@ -13,6 +11,7 @@ public class PasswordPolicyValidator {
 
     /**
      * Valide le mot de passe selon la politique définie.
+     * Règles : 12 caractères min, 1 majuscule, 1 minuscule, 1 chiffre, 1 spécial.
      */
     public static void validate(String password) {
         if (password == null || password.length() < 12) {
@@ -26,10 +25,15 @@ public class PasswordPolicyValidator {
         boolean hasSpecial = false;
 
         for (char c : password.toCharArray()) {
-            if (Character.isUpperCase(c)) hasUpper = true;
-            else if (Character.isLowerCase(c)) hasLower = true;
-            else if (Character.isDigit(c)) hasDigit = true;
-            else hasSpecial = true;
+            if (Character.isUpperCase(c)) {
+                hasUpper = true;
+            } else if (Character.isLowerCase(c)) {
+                hasLower = true;
+            } else if (Character.isDigit(c)) {
+                hasDigit = true;
+            } else if (!Character.isLetterOrDigit(c)) {
+                hasSpecial = true;
+            }
         }
 
         if (!hasUpper) {
