@@ -7,15 +7,17 @@ import com.example.auth_server.exception.ResourceConflictException;
 import com.example.auth_server.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * Service principal d'authentification.
  *
+ * ATTENTION : Cette implémentation est volontairement dangereuse
+ * et ne doit jamais être utilisée en production.
+ * TP3 améliore le protocole avec HMAC mais le mot de passe
+ * est stocké de façon réversible pour permettre le recalcul HMAC.
  */
 @Service
 public class AuthService {
@@ -25,15 +27,17 @@ public class AuthService {
     private static final int LOCK_DURATION_MINUTES = 2;
 
     private final UserRepository userRepository;
-    private final BCryptPasswordEncoder passwordEncoder;
 
     public AuthService(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.passwordEncoder = new BCryptPasswordEncoder();
     }
 
     /**
-     * Inscrit un nouvel utilisateur avec mot de passe hashé.
+     * Inscrit un nouvel utilisateur.
+     * Le mot de passe est stocké en clair pour permettre le recalcul HMAC.
+     *
+     * ATTENTION : Cette implémentation est volontairement dangereuse
+     * et ne doit jamais être utilisée en production.
      */
     public User register(String email, String password) {
 
@@ -53,53 +57,12 @@ public class AuthService {
             throw new ResourceConflictException("Cet email est déjà utilisé");
         }
 
-        String hashedPassword = passwordEncoder.encode(password);
-        User user = new User(email, hashedPassword);
+        // TP3 : mot de passe stocké en clair pour recalcul HMAC
+        // TP4 corrigera cela avec AES-GCM Master Key
+        User user = new User(email, password);
         userRepository.save(user);
         logger.info("Inscription réussie");
         return user;
-    }
-
-    /**
-     * Vérifie les identifiants avec BCrypt et gestion anti brute force.
-     *
-     */
-    public String login(String email, String password) {
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AuthenticationFailedException(
-                        "Email ou mot de passe incorrect"));
-
-        // Vérification du blocage
-        if (user.getLockUntil() != null &&
-                user.getLockUntil().isAfter(LocalDateTime.now())) {
-            logger.warn("Compte bloqué");
-            throw new AuthenticationFailedException(
-                    "Compte temporairement bloqué. Réessayez dans 2 minutes.");
-        }
-
-        // Vérification du mot de passe
-        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-            user.setFailedAttempts(user.getFailedAttempts() + 1);
-            if (user.getFailedAttempts() >= MAX_ATTEMPTS) {
-                user.setLockUntil(LocalDateTime.now()
-                        .plusMinutes(LOCK_DURATION_MINUTES));
-                logger.warn("Compte bloqué après {} tentatives", MAX_ATTEMPTS);
-            }
-            userRepository.save(user);
-            logger.warn("Connexion échouée");
-            throw new AuthenticationFailedException(
-                    "Email ou mot de passe incorrect");
-        }
-
-        // Réinitialisation des tentatives
-        user.setFailedAttempts(0);
-        user.setLockUntil(null);
-        String token = UUID.randomUUID().toString();
-        user.setToken(token);
-        userRepository.save(user);
-        logger.info("Connexion réussie");
-        return token;
     }
 
     /**
