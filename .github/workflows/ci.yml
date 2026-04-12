@@ -38,9 +38,9 @@ jobs:
       # 6. Analyse SonarCloud
       - name: SonarCloud Scan
         env:
-          SONAR_TOKEN: ${{ secrets.ffd7ef2cfc4828e27315f1446b52d1a6de79ef14 }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: ./mvnw sonar:sonar
-          -Dsonar.projectKey=${{ secrets.liwell976_tp-auth }}
-          -Dsonar.organization=${{ secrets.liwell976 }}
+          -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+          -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
           -Dsonar.host.url=https://sonarcloud.io
           -Dsonar.scanner.javaOpts=-Xmx512m
