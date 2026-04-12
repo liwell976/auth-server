@@ -8,7 +8,13 @@ import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
 
@@ -22,12 +28,12 @@ public class EncryptionService {
     private static final int GCM_IV_LENGTH = 12;
     private static final int GCM_TAG_LENGTH = 128;
     private static final String VERSION = "v1";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final SecretKey masterKey;
 
     /**
      * Initialise le service avec la Master Key injectée via variable d'environnement.
-     * L'application refuse de démarrer si la clé est absente.
      */
     public EncryptionService(@Value("${APP_MASTER_KEY}") String masterKeyStr) {
         if (masterKeyStr == null || masterKeyStr.isBlank()) {
@@ -42,11 +48,14 @@ public class EncryptionService {
 
     /**
      * Chiffre un texte en clair avec AES-GCM.
-     * Format de sortie : v1:Base64(iv):Base64(ciphertext)
      */
-    public String encrypt(String plaintext) throws Exception {
+    public String encrypt(String plaintext)
+            throws NoSuchAlgorithmException, NoSuchPaddingException,
+            InvalidKeyException, InvalidAlgorithmParameterException,
+            IllegalBlockSizeException, BadPaddingException {
+
         byte[] iv = new byte[GCM_IV_LENGTH];
-        new SecureRandom().nextBytes(iv);
+        SECURE_RANDOM.nextBytes(iv);
 
         Cipher cipher = Cipher.getInstance(ALGORITHM);
         GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
@@ -63,9 +72,12 @@ public class EncryptionService {
 
     /**
      * Déchiffre un texte chiffré avec AES-GCM.
-     * Format attendu : v1:Base64(iv):Base64(ciphertext)
      */
-    public String decrypt(String encryptedData) throws Exception {
+    public String decrypt(String encryptedData)
+            throws NoSuchAlgorithmException, NoSuchPaddingException,
+            InvalidKeyException, InvalidAlgorithmParameterException,
+            IllegalBlockSizeException, BadPaddingException {
+
         String[] parts = encryptedData.split(":");
         if (parts.length != 3 || !VERSION.equals(parts[0])) {
             throw new InvalidInputException("Format de données chiffrées invalide");

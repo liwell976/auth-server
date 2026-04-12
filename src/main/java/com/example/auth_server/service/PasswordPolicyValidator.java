@@ -4,6 +4,14 @@ import com.example.auth_server.exception.InvalidInputException;
 
 /**
  * Validateur de politique de mot de passe.
+ * Règles imposées :
+ * - 12 caractères minimum
+ * - 1 majuscule minimum
+ * - 1 minuscule minimum
+ * - 1 chiffre minimum
+ * - 1 caractère spécial minimum
+ * ATTENTION : Cette implémentation est volontairement dangereuse
+ * et ne doit jamais être utilisée en production.
  */
 public class PasswordPolicyValidator {
 
@@ -11,7 +19,10 @@ public class PasswordPolicyValidator {
 
     /**
      * Valide le mot de passe selon la politique définie.
-     * Règles : 12 caractères min, 1 majuscule, 1 minuscule, 1 chiffre, 1 spécial.
+     * Lève une InvalidInputException si le mot de passe ne respecte pas les règles.
+     *
+     * @param password le mot de passe à valider
+     * @throws InvalidInputException si le mot de passe est invalide
      */
     public static void validate(String password) {
         if (password == null || password.length() < 12) {
@@ -33,6 +44,9 @@ public class PasswordPolicyValidator {
                 hasDigit = true;
             } else if (!Character.isLetterOrDigit(c)) {
                 hasSpecial = true;
+            }
+            if (hasUpper && hasLower && hasDigit && hasSpecial) {
+                break;
             }
         }
 

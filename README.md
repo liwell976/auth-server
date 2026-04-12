@@ -89,6 +89,83 @@ tenter de la rejouer. TP3 corrigera cela avec HMAC et un nonce.
 - TP3 : Protocole HMAC + nonce anti-rejeu
 - TP4 : Master Key AES-GCM + CI/CD GitHub Actions
 
+## TP3 — Authentification Forte (HMAC)
+
+### Protocole d'authentification
+Le mot de passe ne circule plus sur le réseau.
+Le client prouve qu'il connaît le secret sans l'envoyer.
+
+#### Étape 1 — Le client calcule une preuve signée
+- Génère un nonce (UUID aléatoire)
+- Récupère le timestamp actuel (epoch secondes)
+- Calcule : message = email + ":" + nonce + ":" + timestamp
+- Calcule : hmac = HMAC_SHA256(clé = motDePasse, données = message)
+- Envoie : { email, nonce, timestamp, hmac }
+
+#### Étape 2 — Le serveur vérifie la preuve
+1. Vérifie que l'email existe → sinon 401
+2. Vérifie le timestamp dans une fenêtre de ±60 secondes → sinon 401
+3. Vérifie que le nonce n'a pas déjà été utilisé → sinon 401
+4. Enregistre le nonce en base
+5. Déchiffre le mot de passe stocké
+6. Recalcule le HMAC et compare en temps constant → sinon 401
+7. Marque le nonce comme consommé
+8. Retourne un accessToken valable 15 minutes
+
+### Protections mises en place
+
+| Mécanisme | Protège contre |
+|-----------|---------------|
+| HMAC-SHA256 | Interception du mot de passe |
+| Timestamp ±60s | Requêtes trop anciennes |
+| Nonce anti-rejeu | Réutilisation d'une requête capturée |
+| Comparaison temps constant | Timing attacks |
+
+### Structure base de données TP3
+- Table `users` : id, email, password_encrypted, token, created_at
+- Table `auth_nonce` : id, user_id, nonce, expires_at, consumed, created_at
+
+### Résultats qualité TP3
+- Quality Gate SonarCloud : Passed
+- Couverture : 87.1%
+- Duplications : 0.0%
+- Tests : 24 — tous verts
+
+## TP4 — Master Key + CI/CD
+
+### Chiffrement AES-GCM
+Les mots de passe sont chiffrés avec AES-GCM avant stockage en base.
+La Master Key est injectée via variable d'environnement :
+```powershell
+$env:APP_MASTER_KEY="ta_master_key_secrete"
+.\mvnw spring-boot:run
+```
+
+Ne jamais committer la Master Key dans le code !
+
+### CI/CD GitHub Actions
+La pipeline se déclenche automatiquement à chaque push :
+- Build du projet
+- Exécution des 29 tests JUnit
+- Analyse SonarCloud
+- Blocage si tests échouent ou Quality Gate rouge
+
+### Résultats qualité TP4
+- Quality Gate : Passed
+- Couverture : 87%+
+- Duplications : 0.0%
+- Tests : 29 — tous verts
+
+### Secrets GitHub configurés
+- SONAR_TOKEN
+- SONAR_PROJECT_KEY
+- SONAR_ORGANIZATION
+
+### Issues SonarCloud marquées Accepted
+- PasswordPolicyValidator.java : expressions booléennes marquées redondantes
+  par SonarCloud mais la logique est correcte et intentionnelle.
+  Le break optimise la boucle et les vérifications finales sont nécessaires.
+
 ## TPs
 - TP1 : Authentification dangereuse (mot de passe en clair) — tag v1-tp1
 - TP2 : Authentification fragile (BCrypt + anti brute force) — tag v2-tp2
