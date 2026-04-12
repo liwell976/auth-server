@@ -69,4 +69,51 @@ public class AuthService {
                 .orElseThrow(() -> new AuthenticationFailedException(
                         "Token invalide"));
     }
+
+    /**
+     * Change le mot de passe d'un utilisateur authentifié.
+     * Vérifie l'ancien mot de passe, la confirmation et la politique.
+     */
+    public void changePassword(String email, String oldPassword,
+                               String newPassword, String confirmPassword) {
+
+        // 1. Vérifier que l'utilisateur existe
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AuthenticationFailedException(
+                        "Utilisateur introuvable"));
+
+        // 2. Vérifier l'ancien mot de passe
+        try {
+            String decryptedPassword = encryptionService.decrypt(
+                    user.getPasswordEncrypted());
+            if (!decryptedPassword.equals(oldPassword)) {
+                logger.warn("Changement mot de passe échoué : ancien mot de passe incorrect");
+                throw new AuthenticationFailedException(
+                        "Ancien mot de passe incorrect");
+            }
+        } catch (AuthenticationFailedException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new InvalidInputException("Erreur lors de la vérification");
+        }
+
+        // 3. Vérifier que newPassword et confirmPassword sont identiques
+        if (!newPassword.equals(confirmPassword)) {
+            throw new InvalidInputException(
+                    "Le nouveau mot de passe et la confirmation ne correspondent pas");
+        }
+
+        // 4. Vérifier la force du nouveau mot de passe
+        PasswordPolicyValidator.validate(newPassword);
+
+        // 5. Chiffrer et mettre à jour
+        try {
+            String encryptedNewPassword = encryptionService.encrypt(newPassword);
+            user.setPasswordEncrypted(encryptedNewPassword);
+            userRepository.save(user);
+            logger.info("Changement de mot de passe réussi");
+        } catch (Exception e) {
+            throw new InvalidInputException("Erreur lors du chiffrement");
+        }
+    }
 }

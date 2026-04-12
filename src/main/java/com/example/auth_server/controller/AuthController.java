@@ -12,9 +12,6 @@ import java.util.Map;
 
 /**
  * Controller REST pour les endpoints d'authentification.
- *
- * ATTENTION : Cette implémentation est volontairement dangereuse
- * et ne doit jamais être utilisée en production.
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -78,6 +75,38 @@ public class AuthController {
         return ResponseEntity.ok(Map.of(
                 "email", user.getEmail(),
                 "createdAt", user.getCreatedAt().toString()
+        ));
+    }
+
+    /**
+     * Endpoint de changement de mot de passe.
+     * PUT /api/auth/change-password
+     */
+    @PutMapping("/change-password")
+    public ResponseEntity<Map<String, Object>> changePassword(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestBody ChangePasswordRequest request) {
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new AuthenticationFailedException("Token manquant ou invalide");
+        }
+
+        String token = authHeader.substring(7);
+        User user = authService.getUserByToken(token);
+
+        if (!user.getEmail().equals(request.getEmail())) {
+            throw new AuthenticationFailedException("Email ne correspond pas au token");
+        }
+
+        authService.changePassword(
+                request.getEmail(),
+                request.getOldPassword(),
+                request.getNewPassword(),
+                request.getConfirmPassword()
+        );
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Mot de passe changé avec succès"
         ));
     }
 }
