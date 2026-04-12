@@ -1,8 +1,8 @@
-name: CI - Build, Test and SonarCloud
+name: CI - Build, Test, SonarCloud and Docker
 
 on:
   push:
-    branches: [ "main", "tp4" ]
+    branches: [ "main", "tp5-change-password" ]
   pull_request:
     branches: [ "main" ]
 
@@ -44,3 +44,7 @@ jobs:
           -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
           -Dsonar.host.url=https://sonarcloud.io
           -Dsonar.scanner.javaOpts=-Xmx512m
+
+      # 7. Build image Docker
+      - name: Build Docker image
+        run: docker build -t cdwfs-auth-app .
