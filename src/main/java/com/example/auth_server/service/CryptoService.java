@@ -8,15 +8,15 @@ import com.example.auth_server.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-
 import java.time.Instant;
 import java.util.UUID;
 
 /**
  * Service de vérification du protocole HMAC.
- * Le mot de passe est stocké de façon réversible pour permettre
+ * Le mot de passe est déchiffré via Master Key pour permettre
  * le recalcul du HMAC côté serveur.
  */
 @Service
@@ -27,11 +27,14 @@ public class CryptoService {
 
     private final UserRepository userRepository;
     private final AuthNonceRepository authNonceRepository;
+    private final EncryptionService encryptionService;
 
     public CryptoService(UserRepository userRepository,
-                         AuthNonceRepository authNonceRepository) {
+                         AuthNonceRepository authNonceRepository,
+                         EncryptionService encryptionService) {
         this.userRepository = userRepository;
         this.authNonceRepository = authNonceRepository;
+        this.encryptionService = encryptionService;
     }
 
     /**
@@ -52,27 +55,27 @@ public class CryptoService {
         long now = Instant.now().getEpochSecond();
         if (Math.abs(now - timestamp) > TIMESTAMP_WINDOW) {
             logger.warn("Login HMAC échoué : timestamp expiré");
-            throw new AuthenticationFailedException(
-                    "Requête expirée");
+            throw new AuthenticationFailedException("Requête expirée");
         }
 
         // 3. Vérifier le nonce anti-rejeu
         authNonceRepository.findByUserIdAndNonce(user.getId(), nonce)
                 .ifPresent(n -> {
-                    throw new AuthenticationFailedException(
-                            "Nonce déjà utilisé");
+                    throw new AuthenticationFailedException("Nonce déjà utilisé");
                 });
 
         // 4. Enregistrer le nonce
         AuthNonce authNonce = new AuthNonce(user.getId(), nonce);
         authNonceRepository.save(authNonce);
 
-        // 5. Recalculer le HMAC côté serveur
+        // 5. Déchiffrer le mot de passe et recalculer le HMAC
         try {
+            String passwordPlain = encryptionService.decrypt(
+                    user.getPasswordEncrypted());
             String message = email + ":" + nonce + ":" + timestamp;
-            String expectedHmac = HmacUtil.compute(
-                    user.getPasswordEncrypted(), message);
+            String expectedHmac = HmacUtil.compute(passwordPlain, message);
 
+            // 6. Comparer en temps constant
             if (!HmacUtil.compareConstantTime(expectedHmac, hmac)) {
                 logger.warn("Login HMAC échoué : signature invalide");
                 throw new AuthenticationFailedException(
@@ -83,6 +86,9 @@ public class CryptoService {
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             throw new AuthenticationFailedException(
                     "Erreur lors de la vérification");
+        } catch (Exception e) {
+            throw new AuthenticationFailedException(
+                    "Erreur lors du déchiffrement");
         }
 
         // 7. Marquer le nonce comme consommé

@@ -9,27 +9,27 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-
 /**
  * Service principal d'authentification.
- * ATTENTION : Cette implémentation est volontairement dangereuse
- * et ne doit jamais être utilisée en production.
- * TP3 améliore le protocole avec HMAC mais le mot de passe
- * est stocké de façon réversible pour permettre le recalcul HMAC.
+ * * TP4 chiffre les mots de passe avec AES-GCM via Master Key.
  */
 @Service
+
 public class AuthService {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
-    private final UserRepository userRepository;
 
-    public AuthService(UserRepository userRepository) {
+    private final UserRepository userRepository;
+    private final EncryptionService encryptionService;
+
+    public AuthService(UserRepository userRepository,
+                       EncryptionService encryptionService) {
         this.userRepository = userRepository;
+        this.encryptionService = encryptionService;
     }
 
     /**
-     * Inscrit un nouvel utilisateur.
-     * Le mot de passe est stocké en clair pour permettre le recalcul HMAC.
+     * Inscrit un nouvel utilisateur avec mot de passe chiffré AES-GCM.
      */
     public User register(String email, String password) {
 
@@ -49,12 +49,16 @@ public class AuthService {
             throw new ResourceConflictException("Cet email est déjà utilisé");
         }
 
-        // TP3 : mot de passe stocké en clair pour recalcul HMAC
-        // TP4 corrigera cela avec AES-GCM Master Key
-        User user = new User(email, password);
-        userRepository.save(user);
-        logger.info("Inscription réussie");
-        return user;
+        try {
+            String encryptedPassword = encryptionService.encrypt(password);
+            User user = new User(email, encryptedPassword);
+            userRepository.save(user);
+            logger.info("Inscription réussie");
+            return user;
+        } catch (Exception e) {
+            logger.warn("Inscription échouée : erreur chiffrement");
+            throw new InvalidInputException("Erreur lors du chiffrement du mot de passe");
+        }
     }
 
     /**
