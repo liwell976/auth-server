@@ -1,0 +1,42 @@
+name: CI - Build, Test and SonarCloud
+
+on:
+  push:
+    branches: [ "main", "tp4" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Récupération du code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Installation du JDK 17
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+
+      # 3. Master Key fictive pour les tests
+      - name: Set test Master Key
+        run: echo "APP_MASTER_KEY=test_master_key_for_ci_only_32chars" >> $GITHUB_ENV
+
+      # 4. Build + Tests
+      - name: Build and run tests
+        run: ./mvnw clean verify
+
+      # 5. Analyse SonarCloud
+      - name: SonarCloud Scan
+        env:
+          SONAR_TOKEN: ${{ secrets.ffd7ef2cfc4828e27315f1446b52d1a6de79ef14 }}
+        run: ./mvnw sonar:sonar
+          -Dsonar.projectKey=${{ secrets.liwell976_tp-auth }}
+          -Dsonar.organization=${{ secrets.liwell976 }}
+          -Dsonar.host.url=https://sonarcloud.io
+          -Dsonar.scanner.javaOpts=-Xmx512m
