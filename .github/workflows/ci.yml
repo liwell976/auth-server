@@ -27,11 +27,15 @@ jobs:
       - name: Set test Master Key
         run: echo "APP_MASTER_KEY=test_master_key_for_ci_only_32chars" >> $GITHUB_ENV
 
-      # 4. Build + Tests
+      # 4. Rendre mvnw exécutable
+      - name: Make mvnw executable
+        run: chmod +x ./mvnw
+
+      # 5. Build + Tests
       - name: Build and run tests
         run: ./mvnw clean verify
 
-      # 5. Analyse SonarCloud
+      # 6. Analyse SonarCloud
       - name: SonarCloud Scan
         env:
           SONAR_TOKEN: ${{ secrets.ffd7ef2cfc4828e27315f1446b52d1a6de79ef14 }}
